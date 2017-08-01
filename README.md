@@ -1,9 +1,9 @@
 #### Node.js+MongoDB实现基本的动态电影网站（实现基本的增删功能）
 
-#####Build Setup
+##### Build Setup
 *  npm install
 *  bower install
-*   open your MongdDB 
+*   open your MongdDB
 *   npm start
 
 ##### 浏览器查看效果
