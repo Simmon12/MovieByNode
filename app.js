@@ -43,4 +43,18 @@ app.use(function(err, req, res, next) {
   res.render('error');
 });
 
+/* grunt 调整启动服务的脚本，包括package.json的start做了变动*/
+var debug = require('debug')('imooc：server'); // debug模块
+app.set('port', process.env.PORT || 3000); // 设定监听端口
+
+// Environment sets...
+
+// module.exports = app; 这是 4.x 默认的配置，分离了 app 模块,将它注释即可，上线时可以重新改回来
+
+//启动监听
+var server = app.listen(app.get('port'), function() {
+  debug('Express server listening on port ' + server.address().port);
+});
+/* grunt */
+
 module.exports = app;
