@@ -4,22 +4,77 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-
-var index = require('./routes/index');
-
+var mongoose = require('mongoose');
+var session = require('express-session');
+var MongoStore = require('connect-mongo')(session);
 var app = express();
+var index = require('./routes/index');
+var fs = require('fs');
+var dbUrl = 'mongodb://localhost/imovie';
+
+mongoose.connect(dbUrl)
+
+
+// models loading
+var models_path = __dirname + '/app/models'
+var walk = function(path) {
+  fs
+    .readdirSync(path)
+    .forEach(function(file) {
+      var newPath = path + '/' + file
+      var stat = fs.statSync(newPath)
+
+      if (stat.isFile()) {
+        if (/(.*)\.(js|coffee)/.test(file)) {
+          require(newPath)
+        }
+      }
+      else if (stat.isDirectory()) {
+        walk(newPath)
+      }
+    })
+}
+walk(models_path)
+
+
 
 // view engine setup
-app.set('views', path.join(__dirname, 'views/pages'));
+app.set('views', path.join(__dirname, 'app/views/pages'));
 app.set('view engine', 'jade');
 app.locals.moment = require('moment')
+
+
 // uncomment after placing your favicon in /public
 //app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
 app.use(logger('dev'));
-app.use(bodyParser.json());
+// 调试
+if('development' === app.get('env')) {
+  console.log('process.env.server_ENV: ', process.env.server_ENV)
+  console.log('app.get("env")', app.get('env'))
+  console.log('in development environment')
+  app.set('showStackError', true)
+  app.use(logger(':method :url :status'))
+  app.locals.pretty = true
+  mongoose.set('debug', true)
+}
+
 // 重点理解原因
+app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
+app.use(require('connect-multiparty')());
+
 app.use(cookieParser());
+app.use(session({
+  secret: 'imooc',
+  store: new MongoStore({
+    url: dbUrl,
+    collection: 'sessions'
+  }),
+  resave: false,
+  saveUninitialized: true
+}))
+
+
 // 静态资源的获取
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -42,6 +97,7 @@ app.use(function(err, req, res, next) {
   res.status(err.status || 500);
   res.render('error');
 });
+
 
 /* grunt 调整启动服务的脚本，包括package.json的start做了变动*/
 var debug = require('debug')('imooc：server'); // debug模块

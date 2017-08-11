@@ -1,143 +1,57 @@
 var express = require('express');
 var router = express.Router();
-var mongoose = require('mongoose');
-var Movie = require('../models/movie')
-var _underscore = require('underscore')
+var Movie = require('../app/controller/movie');
+var Index = require('../app/controller/index');
+var User = require('../app/controller/user');
+var Comment = require('../app/controller/comment');
+var Category = require('../app/controller/category')
 
-mongoose.connect('mongodb://localhost/imovie')
 
 // 重点理解原因
 // app.use(bodyParser.urlencoded({ extended: true }));
 
+
+// 预先判断登录情况
+router.use(function(req, res, next) {
+  var _user = req.session.user
+  if(_user) {
+    req.app.locals.user = _user
+  }
+  return next()
+})
+
+
 /* Get index page */
-router.get('/', function(req, res, next) {
-    Movie.fetch(function(err, movies) {
-      if(err) {
-        console.log(err)
-      }
-      res.render('index', {
-        title: '首页',
-        movies: movies
-      });
-    })
-});
+router.get('/', Index.index );
 
-/* GET detail page. */
-router.get('/movie/:id', function(req, res, next) {
-  console.log("req.pqrams: ", req.params)
-  var id = req.params.id;
+/* Movie */
+router.get('/movie/:id', Movie.detail);
+router.get('/admin/movie', User.signinRequired, User.adminRequired, Movie.admin);
+router.get('/admin/movie/update/:id', User.signinRequired, User.adminRequired, Movie.update);
+router.post('/admin/movie/new', User.signinRequired, User.adminRequired, Movie.savePoster, Movie.new);
+router.get('/admin/movie/list', User.signinRequired, User.adminRequired, Movie.list);
+router.delete('/admin/movie/list', User.signinRequired, User.adminRequired,  Movie.delete);
 
-  Movie.findById(id, function(err, movie) {
-     res.render('detail', {
-       title: 'immoc' + movie.title,
-       movie: movie
-     })
-  })
+/*User*/
+router.post('/user/signup', User.signup);
+router.post('/user/signin', User.signin);
+router.get('/logout', User.logout);
+router.get('/admin/user/list', User.signinRequired, User.adminRequired, User.userList);
+router.get('/signup', User.showSignup);
+router.get('/signin', User.showSignin);
+router.delete('/admin/user/list', User.delete);
 
-});
+/*Comment*/
+router.post('/user/comment', User.signinRequired, Comment.new)
 
-router.get('/admin/movie', function(req, res, next) {
-    res.render('admin', {
-      title: "后端录入页",
-      movie: {
-        title: '',
-        doctor: '',
-        country: '',
-        year: '',
-        poster: '',
-        flash: '',
-        summary: '',
-        language: ''
-      }
-    });
-});
+/*Category*/
+router.get('/admin/category', User.signinRequired, User.adminRequired, Category.admin)
+router.post('/admin/category/new', User.signinRequired, User.adminRequired, Category.new)
+router.get('/admin/category/list', User.signinRequired, User.adminRequired, Category.list)
+router.delete('/admin/category/list', User.signinRequired, User.adminRequired, Category.delete)
 
-// admin update move
-router.get('/admin/update/:id', function(req, res) {
-  var id = req.params.id
-
-  if(id) {
-    Movie.findById(id, function(err, movie) {
-      res.render('admin', {
-        title: 'immoc 后台更新页',
-        movie: movie
-      })
-    })
-  }
-})
-
-
-// admin post movie
-router.post('/admin/movie/new', function(req, res) {
-  var id = req.body.movie._id
-  var movieObj = req.body.movie
-  console.log("movieObj: ", movieObj)
-  var _movie
-
-  if(id !== 'undefined') {
-    Movie.findById(id, function(err, movie) {
-      if(err) {
-        console.log(err)
-      }
-      _movie = _underscore.extend(movie, movieObj)  // 将movieObj替换movie
-      console.log("_movie1: ", _movie);
-      _movie.save(function(err, movie) {
-        if(err) {
-          console.log(err)
-        }
-        res.redirect('/movie/' + movie._id)
-      })
-    })
-  }
-  else {
-    _movie = new Movie({
-      doctor: movieObj.doctor,
-      title: movieObj.title,
-      country: movieObj.country,
-      language: movieObj.language,
-      year: movieObj.year,
-      poster: movieObj.poster,
-      summary: movieObj.summary,
-      flash: movieObj.flash
-    })
-    console.log("_movie2", _movie);
-    _movie.save(function(err, movie) {
-      if(err) {
-          console.log(err)
-        }
-        res.redirect('/movie/' + movie._id)
-    })
-  }
-
-})
-
-router.get('/admin/list', function(req, res, next) {
-    Movie.fetch(function(err, movies) {
-      if(err) {
-        console.log(err)
-      }
-
-      res.render('list', {
-        title: "列表页",
-        movies: movies
-      })
-    })
-})
-
-// list delete movie
-router.delete('/admin/list' , function(req, res) {
-     var id = req.query.id
-     if(id) {
-      Movie.remove({_id:id}, function(err, movie) {
-         if(err) {
-          console.log(err)
-         }
-         else {
-          res.json({success: 1})
-         }
-      })
-     }
-})
+/*results*/
+router.get('/results', Index.search)
 
 
 module.exports = router;
